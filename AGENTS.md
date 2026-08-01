@@ -1,3 +1,71 @@
+# AGENTS.md — Agent Instructions
+
+## Repo State
+
+This is a **fresh Android Studio template** — nearly all project code is unwritten.
+This file is the **project specification**. Build toward the contract it describes;
+do not assume any described structure already exists.
+
+## Current Build Config
+
+- AGP 9.2.1, Gradle 9.4.1
+- compileSdk 36 (AGP 9 syntax: `release(36) { minorApiLevel = 1 }`), minSdk 26
+- Version catalog: `gradle/libs.versions.toml`
+- Single `:app` module (`settings.gradle.kts`)
+- **No** AIDL plugin, View Binding, or multi-module structure declared yet
+
+## Commands
+
+```bash
+# Build everything
+./gradlew assembleDebug
+
+# Verify real process separation (service runs in separate process)
+adb shell ps | grep binderlearning
+
+# Watch the full IPC flow in Logcat
+adb logcat | grep -E "Binder|CalculatorService|CalculatorClient"
+```
+
+## Required Structural Changes (in order)
+
+1. Restructure into 3 modules: `aidl/`, `app-service/`, `app-client/`
+2. Add `com.android.library` + `android.aidl` plugins to `aidl/` build script
+3. Add `android.application` + View Binding to `app-service/` and `app-client/`
+4. Wire module dependencies: `app-client` → `aidl`, `app-service` → `aidl`
+5. Declare service with `android:process=":service"` in manifest
+
+## Key Technical Points to Follow
+
+- **Process boundary**: Service must use `android:process=":service"` to guarantee real IPC
+- **Threading**: AIDL methods execute on Binder thread pool, **not** service main thread — log `Thread.currentThread().name` to prove it
+- **RemoteException**: Every generated Proxy method can throw it — catch at every call site, never let propagate
+- **Divide-by-zero**: Return 0 and log — must not crash service process
+- **Comments**: Every Binder/AIDL code path needs inline explanatory comments tracing the IPC flow (Proxy → Parcel → `/dev/binder` → kernel → Stub → implementation)
+
+## Constraints (do NOT use)
+
+Hilt, Dagger, Koin, Jetpack Compose, Coroutines, Flow, RxJava, MVVM, Clean Architecture
+
+Only: Kotlin, XML layouts, View Binding, Android SDK APIs
+
+## Spec-to-Reality Gap
+
+| What AGENTS.md describes | Current reality |
+|---|---|
+| 3 modules: app-client, app-service, aidl | Single `:app` module only |
+| ICalculatorService.aidl | Does not exist |
+| CalculatorService (Bound Service) | Does not exist |
+| Client Activity with UI | Default template only |
+| View Binding | Not declared |
+| Service manifest with `:service` process | Not configured |
+
+---
+
+# Learning Roadmap (preserved below — project specification)
+
+---
+
 # AGENT.md
 
 ## Project

@@ -9,6 +9,32 @@
 //   3. Kernel driver copies data into the service process
 //   4. Stub.onTransact() dispatches to the real method
 //   5. Result flows back the same way in reverse
+//
+// THREADING NOTE — Binder calls from the main thread:
+//   Every AIDL method call is synchronous — the calling thread blocks
+//   until the remote method returns. When called from the UI (main) thread,
+//   the UI freezes for the duration. In this project, divide() has an
+//   artificial 2-second Thread.sleep() to make this visible.
+//
+//   To verify: tap Divide with A=10, B=2. The UI freezes for ~2 seconds,
+//   then "10 divide 2 = 5" appears. Meanwhile the service log shows:
+//     "divide(10, 2) called on thread: Binder:xxx"
+//   This proves the service runs on a Binder thread pool thread (not its
+//   main thread), but the client's main thread still blocks waiting.
+//
+//   Fix without Coroutines/RxJava (which are excluded by project constraints):
+//     Thread {
+//         try {
+//             val result = service.divide(a, b)
+//             runOnUiThread { binding.resultText.text = "$a / $b = $result" }
+//         } catch (e: RemoteException) {
+//             runOnUiThread { binding.resultText.text = "Error: ${e.message}" }
+//         }
+//     }.start()
+//
+//   In real apps, the Binder call would be offloaded to a background thread.
+//   For this simple project, we call from the main thread deliberately to
+//   demonstrate the blocking behavior.
 
 package com.izzatismail.binderlearning
 
@@ -40,6 +66,15 @@ class MainActivity : AppCompatActivity() {
         // Service returned from onBind(). In this process, this IBinder is an
         // ICalculatorService.Proxy that wraps a remote reference to the Stub
         // in the service process. Every method call on it goes through Binder IPC.
+        //
+        // DEATH HANDLING NOTE — linkToDeath:
+        //   If the service process crashes, onServiceDisconnected fires but there
+        //   is a race: AIDL calls sent before the kernel notifies us will throw
+        //   RemoteException. Production code can register with
+        //     serviceIBinder.linkToDeath(deathRecipient, flags)
+        //   to get an immediate callback via binderDied() when the remote process
+        //   dies, without waiting for the AMS to dispatch onServiceDisconnected.
+        //   This is how CarService detects a crashed VHAL HAL without polling.
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             Log.d(TAG, "Service connected: $name")
             calculatorService = ICalculatorService.Stub.asInterface(service)

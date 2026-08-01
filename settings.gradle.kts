@@ -23,5 +23,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "BinderLearning"
-include(":app")
+include(":app-client")
+include(":app-service")
 include(":aidl")

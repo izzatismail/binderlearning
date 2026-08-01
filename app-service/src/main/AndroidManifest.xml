@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+          The service runs in a separate process (":service").
+          The ":" prefix means it's a private process within this app's UID.
+          This guarantees a real process boundary — Binder marshalls every call
+          through /dev/binder instead of resolving locally.
+        -->
+        <service
+            android:name="com.izzatismail.binderlearning.service.CalculatorService"
+            android:process=":service"
+            android:exported="true" />
+    </application>
+
+</manifest>
